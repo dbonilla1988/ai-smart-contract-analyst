@@ -1,0 +1,28 @@
+{
+  "name": "ai-smart-contract-analyst",
+  "private": true,
+  "version": "0.0.0",
+  "description": "AI-assisted Solidity analysis with deterministic security checks",
+  "packageManager": "pnpm@10.6.3",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @asca/web dev",
+    "build": "pnpm -r --filter=./packages/* build && pnpm --filter @asca/web build",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.22.0",
+    "eslint": "^9.22.0",
+    "prettier": "^3.5.3",
+    "typescript": "^5.8.2",
+    "typescript-eslint": "^8.26.1",
+    "vitest": "^3.0.8"
+  },
+  "type": "module"
+}
