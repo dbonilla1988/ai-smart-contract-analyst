@@ -58,6 +58,14 @@ label {
   margin-bottom: 0.5rem;
 }
 
+.demo-note {
+  margin: -0.15rem 0 0.55rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.4;
+  font-weight: 400;
+}
+
 textarea {
   width: 100%;
   min-height: 220px;

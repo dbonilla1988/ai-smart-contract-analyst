@@ -344,6 +344,9 @@ export default function HomePage() {
 
       <section className="panel">
         <label htmlFor="solidity-source">Solidity source</label>
+        <p className="demo-note">
+          Demo contract — intentionally contains security issues for analysis.
+        </p>
         <textarea
           id="solidity-source"
           value={source}
