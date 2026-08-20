@@ -15,7 +15,16 @@ This is a **pnpm workspace**. Build from the **repo root** so `@asca/shared`, `@
 
 Commit `pnpm-lock.yaml` and keep `packageManager` in root `package.json` so Vercel selects pnpm.
 
-A root `vercel.json` pins `installCommand` / `buildCommand` / `framework` to the values above. If the Next.js app is not auto-detected from the monorepo root, set the Vercel **Root Directory** to `apps/web` and keep the same install/build commands prefixed with `cd ../.. &&` so workspace packages still build first.
+**Production Vercel project settings (required for this monorepo):**
+
+| Setting | Value |
+|---------|--------|
+| Root Directory | `apps/web` |
+| Install Command | `cd ../.. && pnpm install` |
+| Build Command | `cd ../.. && pnpm build` |
+| Framework | Next.js |
+
+Reason: Next.js lives in `apps/web`, but `@asca/*` packages export from `dist/` and must be built via the root `pnpm build` script first. `apps/web/vercel.json` pins the install/build commands above.
 
 ## Environment variables
 
