@@ -11,6 +11,7 @@ import {
   resolveLlmProvider,
   resolveLlmProviderResult,
   StubLlmProvider,
+  normalizeOpenAiApiKey,
   validateLlmEnv,
   DEFAULT_OPENAI_MODEL,
 } from "./index.js";
@@ -295,6 +296,14 @@ describe("@asca/llm phase3", () => {
 });
 
 describe("@asca/llm phase4 env / provider safety", () => {
+  it("normalizes pasted API keys with whitespace/quotes/Bearer prefix", () => {
+    expect(normalizeOpenAiApiKey('  "sk-test_key-123"  ')).toBe("sk-test_key-123");
+    expect(normalizeOpenAiApiKey("Bearer sk-test_key-123")).toBe("sk-test_key-123");
+    expect(normalizeOpenAiApiKey("sk-test\n_key-123")).toBe("sk-test_key-123");
+    expect(normalizeOpenAiApiKey("not-a-key")).toBeNull();
+    expect(normalizeOpenAiApiKey("sk-test\u201Cbad")).toBeNull();
+  });
+
   it("rejects invalid OPENAI_MODEL against allowlist", () => {
     const result = resolveLlmProviderResult({
       env: {
@@ -309,6 +318,19 @@ describe("@asca/llm phase4 env / provider safety", () => {
     expect(validateLlmEnv({ OPENAI_API_KEY: "sk-test", OPENAI_MODEL: "gpt-4o-mini" }).model).toBe(
       "gpt-4o-mini",
     );
+  });
+
+  it("rejects header-illegal API key characters as invalid_api_key", () => {
+    const result = resolveLlmProviderResult({
+      env: {
+        OPENAI_API_KEY: "sk-test\u201Cbad",
+        OPENAI_MODEL: "gpt-4o-mini",
+      },
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.reason).toBe("invalid_api_key");
+    }
   });
 
   it("provider timeout / abort returns failed without leaking internals", async () => {

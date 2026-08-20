@@ -46,7 +46,9 @@ export class OpenAiLlmProvider implements LlmProvider {
   constructor(options: OpenAiProviderOptions) {
     this.apiKey = options.apiKey;
     this.model = resolveSafeModel(options.model);
-    this.fetchImpl = options.fetchImpl ?? fetch;
+    // Prefer globalThis.fetch so bundlers cannot leave a bare `fetch` unbound.
+    this.fetchImpl =
+      options.fetchImpl ?? globalThis.fetch.bind(globalThis);
     this.baseUrl = options.baseUrl ?? "https://api.openai.com/v1";
     this.timeoutMs = options.timeoutMs ?? AI_LIMITS.timeoutMs;
   }
@@ -97,11 +99,31 @@ export class OpenAiLlmProvider implements LlmProvider {
       });
 
       if (!response.ok) {
+        let providerCode: string | null = null;
+        try {
+          const errBody = (await response.json()) as {
+            error?: { code?: string; type?: string };
+          };
+          providerCode = errBody.error?.code ?? errBody.error?.type ?? null;
+        } catch {
+          providerCode = null;
+        }
+        console.info(
+          JSON.stringify({
+            kind: "ai_provider_http_error",
+            httpStatus: response.status,
+            providerCode,
+            model: this.model,
+          }),
+        );
         return {
           status: "failed",
           model: this.model,
           citedFindingIds: [],
-          interpretation: "AI explanation is temporarily unavailable.",
+          interpretation:
+            response.status === 401
+              ? "AI explanation is unavailable because the configured OpenAI API key was rejected by the provider."
+              : "AI explanation is temporarily unavailable.",
         };
       }
 
@@ -151,12 +173,42 @@ export class OpenAiLlmProvider implements LlmProvider {
 
       const grounded = groundAiInterpretation(report, modelParsed.data, this.model);
       return grounded.interpretation;
-    } catch {
+    } catch (err) {
+      const e = err as {
+        name?: string;
+        message?: string;
+        code?: unknown;
+        cause?: { name?: string; code?: unknown; message?: string };
+      };
+      const name = e?.name ?? (err instanceof Error ? err.name : "UnknownError");
+      const code = e?.code != null ? String(e.code) : undefined;
+      const message = String(e?.message ?? "").slice(0, 160);
+      const cause = e?.cause;
+      // Privacy-safe diagnostics only — never log keys, prompts, or bodies.
+      console.info(
+        JSON.stringify({
+          kind: "ai_provider_error",
+          name,
+          code: code ?? null,
+          message: message.replace(/sk-[A-Za-z0-9_-]+/g, "[REDACTED]"),
+          causeName: cause?.name ?? null,
+          causeCode: cause?.code != null ? String(cause.code) : null,
+          causeMessage: cause?.message
+            ? String(cause.message).slice(0, 160).replace(/sk-[A-Za-z0-9_-]+/g, "[REDACTED]")
+            : null,
+          model: this.model,
+          timeoutMs: this.timeoutMs,
+          fetchType: typeof this.fetchImpl,
+        }),
+      );
+      const timedOut = name === "AbortError" || code === "ABORT_ERR";
       return {
         status: "failed",
         model: this.model,
         citedFindingIds: [],
-        interpretation: "AI explanation failed or timed out.",
+        interpretation: timedOut
+          ? "AI explanation timed out."
+          : "AI explanation is temporarily unavailable.",
       };
     } finally {
       clearTimeout(timer);

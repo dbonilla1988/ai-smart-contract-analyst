@@ -19,5 +19,6 @@ export {
   OPENAI_MODEL_ALLOWLIST,
   DEFAULT_OPENAI_MODEL,
   isAllowedOpenAiModel,
+  normalizeOpenAiApiKey,
   validateLlmEnv,
 } from "./env.js";

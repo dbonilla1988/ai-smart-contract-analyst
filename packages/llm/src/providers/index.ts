@@ -15,7 +15,7 @@ export type ResolveProviderResult =
   | { ok: true; provider: LlmProvider; model: string }
   | {
       ok: false;
-      reason: "missing_api_key" | "invalid_model";
+      reason: "missing_api_key" | "invalid_api_key" | "invalid_model";
       message: string;
     };
 
@@ -38,6 +38,15 @@ export function resolveLlmProviderResult(
     };
   }
 
+  if (validation.unavailableReason === "invalid_api_key" || !validation.apiKey) {
+    return {
+      ok: false,
+      reason: "invalid_api_key",
+      message:
+        "AI explanation is unavailable because OPENAI_API_KEY is not a valid header-safe key token.",
+    };
+  }
+
   if (validation.unavailableReason === "invalid_model" || !validation.model) {
     return {
       ok: false,
@@ -47,12 +56,11 @@ export function resolveLlmProviderResult(
     };
   }
 
-  const apiKey = env.OPENAI_API_KEY!.trim();
   return {
     ok: true,
     model: validation.model,
     provider: new OpenAiLlmProvider({
-      apiKey,
+      apiKey: validation.apiKey,
       model: validation.model,
       fetchImpl: options.fetchImpl,
     }),
